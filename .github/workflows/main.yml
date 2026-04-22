@@ -1,0 +1,29 @@
+name: Professional Deploy DOKS
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Build and Push Images
+        run: |
+          doctl registry login
+          docker build -t registry.digitalocean.com/art-registry/auth:latest ./services/auth
+          docker build -t registry.digitalocean.com/art-registry/catalog:latest ./services/catalog
+          docker push registry.digitalocean.com/art-registry/auth:latest
+          docker push registry.digitalocean.com/art-registry/catalog:latest
+
+      - name: Deploy to DOKS
+        run: |
+          doctl kubernetes cluster kubeconfig save art-platform
+          kubectl apply -f k8s/
